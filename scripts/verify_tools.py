@@ -137,9 +137,7 @@ def dominant(image):
 
 def _crop(image, scale, box):
     x, y, w, h = box
-    return image.crop(
-        (int(x * scale), int(y * scale), int((x + w) * scale), int((y + h) * scale))
-    )
+    return image.crop((int(x * scale), int(y * scale), int((x + w) * scale), int((y + h) * scale)))
 
 
 def _ink_mask(image, tol=24, radius=6):
@@ -221,7 +219,10 @@ def pdf_page_count(path):
 
 
 def pdf_media_boxes(path):
-    return {m.decode().strip() for m in re.findall(rb"/MediaBox\s*\[([^\]]*)\]", Path(path).read_bytes())}
+    return {
+        m.decode().strip()
+        for m in re.findall(rb"/MediaBox\s*\[([^\]]*)\]", Path(path).read_bytes())
+    }
 
 
 async def check_styled_strokes(pres, objects, export, deck):
@@ -263,18 +264,33 @@ async def check_styled_strokes(pres, objects, export, deck):
                     },
                     {
                         "type": "styled_line",
-                        "x1": 100, "y1": 600, "x2": 900, "y2": 600,
-                        "color": maroon, "stroke_width": 6, "dash": "solid",
+                        "x1": 100,
+                        "y1": 600,
+                        "x2": 900,
+                        "y2": 600,
+                        "color": maroon,
+                        "stroke_width": 6,
+                        "dash": "solid",
                     },
                     {
                         "type": "styled_line",
-                        "x1": 100, "y1": 750, "x2": 900, "y2": 750,
-                        "color": black, "stroke_width": 6, "dash": "dotted",
+                        "x1": 100,
+                        "y1": 750,
+                        "x2": 900,
+                        "y2": 750,
+                        "color": black,
+                        "stroke_width": 6,
+                        "dash": "dotted",
                     },
                     {
                         "type": "styled_line",
-                        "x1": 100, "y1": 900, "x2": 900, "y2": 900,
-                        "color": salmon, "stroke_width": 6, "dash": "dashed",
+                        "x1": 100,
+                        "y1": 900,
+                        "x2": 900,
+                        "y2": 900,
+                        "color": salmon,
+                        "stroke_width": 6,
+                        "dash": "dashed",
                         "end_arrow": True,
                     },
                 ],
@@ -286,6 +302,7 @@ async def check_styled_strokes(pres, objects, export, deck):
 
     img, scale = await render_slide(export, 1, "phase9-stroke", 1920, doc_name=doc)
     if img is not None:
+
         def scan(y, expect_rgb):
             """Walk the stroke's row; return (ink runs, gaps, mean sampled colour)."""
             px = [at(img, scale, x, y) for x in range(100, 901, 2)]
@@ -417,9 +434,7 @@ async def check_read_fidelity(pres, content, objects, export, deck):
         (11, 16, "#8E1F55", "Helvetica-Bold"),
         (18, 33, "#EFA3A0", ""),
     ):
-        await objects.style_text_range(
-            1, 1, start, end, color=color, font_name=font, doc_name=doc
-        )
+        await objects.style_text_range(1, 1, start, end, color=color, font_name=font, doc_name=doc)
     check(
         "phase9/read: add a shape at 80% opacity",
         await content.add_shape(1, x=100, y=400, width=200, height=150, opacity=80, doc_name=doc),
@@ -470,9 +485,15 @@ async def check_read_fidelity(pres, content, objects, export, deck):
         "phase9/read: shape reports opacity, rotation and fill TYPE",
         shape_el.get("opacity") == 80
         and "rotation" in shape_el
-        and shape_el.get("fill_type") in
-        {"color fill", "no fill", "gradient fill", "advanced gradient fill",
-         "image fill", "advanced image fill"},
+        and shape_el.get("fill_type")
+        in {
+            "color fill",
+            "no fill",
+            "gradient fill",
+            "advanced gradient fill",
+            "image fill",
+            "advanced image fill",
+        },
         str({k: shape_el.get(k) for k in ("opacity", "rotation", "fill_type")}),
     )
     record(
@@ -651,9 +672,7 @@ async def check_describe_at_scale(pres, deck):
     lines_text = text_of(await deck.describe_deck(doc_name=doc, element_types=["line"]))
     lines_s = time.monotonic() - t0
     lines = json.loads(lines_text)
-    classes = {
-        el.get("element_class") for s in lines["slides"] for el in s.get("elements", [])
-    }
+    classes = {el.get("element_class") for s in lines["slides"] for el in s.get("elements", [])}
     record(
         "phase9/scale: element_types=['line'] returns ONLY lines",
         classes == {"line"},
@@ -680,7 +699,7 @@ async def check_describe_at_scale(pres, deck):
     )
     record(
         "phase9/scale: coordinates are rounded - no trailing '.0' noise",
-        '.0,' not in full_text and '.0\n' not in full_text,
+        ".0," not in full_text and ".0\n" not in full_text,
         f"{full_text.count('.0')} '.0' occurrences",
     )
     record(
@@ -755,21 +774,21 @@ async def check_index_contract(pres, slides, content, export, objects, deck):
     )
 
     # 2. get_slide_content and describe_deck must AGREE on the index.
-    gsc_indices = {
-        int(i): txt
-        for i, txt in re.findall(r"TEXT:(\d+):::([^:]*):::", listing)
-    }
+    gsc_indices = {int(i): txt for i, txt in re.findall(r"TEXT:(\d+):::([^:]*):::", listing)}
     described = json.loads(text_of(await deck.describe_deck(doc_name=doc)))
     dd_texts = [
-        el
-        for el in described["slides"][0]["elements"]
-        if el.get("element_class") == "text item"
+        el for el in described["slides"][0]["elements"] if el.get("element_class") == "text item"
     ]
     dd_indices = {el["index"]: el.get("text", "") for el in dd_texts}
     record(
         "phase9/idx: describe_deck emits element_class + index on every element",
         all("index" in el and "element_class" in el for el in described["slides"][0]["elements"]),
-        str([(el.get("element_class"), el.get("index")) for el in described["slides"][0]["elements"]]),
+        str(
+            [
+                (el.get("element_class"), el.get("index"))
+                for el in described["slides"][0]["elements"]
+            ]
+        ),
     )
     record(
         "phase9/idx: get_slide_content and describe_deck agree on text-item indices",
@@ -795,9 +814,7 @@ async def check_index_contract(pres, slides, content, export, objects, deck):
     target = next(el for el in dd_texts if el.get("text") == "EDITED BOX")
     check(
         "phase9/idx: style_text_range(describe_deck index) is accepted",
-        await objects.style_text_range(
-            1, target["index"], 1, 6, color="#CC0000", doc_name=doc
-        ),
+        await objects.style_text_range(1, target["index"], 1, 6, color="#CC0000", doc_name=doc),
     )
     # RENDERED: the styled text must be the added box, not the placeholder.
     size_text = text_of(await pres.get_slide_size(doc_name=doc))
@@ -1057,9 +1074,7 @@ async def check_fill_is_unwritable(pres, slides, content, export, objects):
     doc = "phase9-fill.key"
     check(
         "phase9: add_shape for the fill probe",
-        await content.add_shape(
-            1, x=box[0], y=box[1], width=box[2], height=box[3], doc_name=doc
-        ),
+        await content.add_shape(1, x=box[0], y=box[1], width=box[2], height=box[3], doc_name=doc),
     )
 
     before, scale = await render_slide(export, 1, "phase9-fill-before", slide_w, doc_name=doc)
@@ -1082,8 +1097,8 @@ async def check_fill_is_unwritable(pres, slides, content, export, objects):
         ("background fill type := color fill", "set background fill type of shape 1 to color fill"),
         ("background color := red", "set background color of shape 1 to {65535, 0, 0}"),
         ("color := red", "set color of shape 1 to {65535, 0, 0}"),
-        ("raw chevron bkft := fico", 'set «class bkft» of shape 1 to «constant ****fico»'),
-        ("raw chevron ceBC := red", 'set «class ceBC» of shape 1 to {65535, 0, 0}'),
+        ("raw chevron bkft := fico", "set «class bkft» of shape 1 to «constant ****fico»"),
+        ("raw chevron ceBC := red", "set «class ceBC» of shape 1 to {65535, 0, 0}"),
     ]
     for label, statement in routes:
         script = (
@@ -1107,8 +1122,15 @@ async def check_fill_is_unwritable(pres, slides, content, export, objects):
     )
     record(
         "phase9: background fill type is READABLE (feeds describe_deck fill_type)",
-        fill_type in {"color fill", "no fill", "gradient fill", "advanced gradient fill",
-                      "image fill", "advanced image fill"},
+        fill_type
+        in {
+            "color fill",
+            "no fill",
+            "gradient fill",
+            "advanced gradient fill",
+            "image fill",
+            "advanced image fill",
+        },
         fill_type,
     )
 
@@ -1178,7 +1200,9 @@ def _run_colour_census(image, scale, band, wanted):
             if sum(abs(a - b) for a, b in zip(pixel, background, strict=True)) < 90:
                 continue
             for want in wanted:
-                if all(abs(a - b) <= _RUN_COLOUR_TOLERANCE for a, b in zip(pixel, want, strict=True)):
+                if all(
+                    abs(a - b) <= _RUN_COLOUR_TOLERANCE for a, b in zip(pixel, want, strict=True)
+                ):
                     counts[want] += 1
                     break
     return counts
@@ -1240,9 +1264,7 @@ async def check_text_runs_author(pres, export, deck):
     )
 
     png = out / "s1.png"
-    await export.screenshot_slide(
-        slide_number=1, output_path=str(png), doc_name="phase10-runs.key"
-    )
+    await export.screenshot_slide(slide_number=1, output_path=str(png), doc_name="phase10-runs.key")
     if png.exists():
         image = Image.open(png)
         counts = _run_colour_census(image, image.size[0] / 1920, (440, 620), wanted)
@@ -1307,6 +1329,273 @@ async def check_text_runs_author(pres, export, deck):
             await pres.close_presentation(doc_name="phase10-runs-rt.key", should_save=False)
         ),
     )
+
+
+def _doc_facts(runner, doc_name):
+    """(width, height, layout names) of an open document, read directly."""
+    raw = runner.run(
+        """
+        on run argv
+            tell application "Keynote"
+                set d to document (item 1 of argv)
+                set AppleScript's text item delimiters to "|||"
+                set names to (name of every slide layout of d) as text
+                set AppleScript's text item delimiters to ""
+                return ((width of d) as integer as text) & "x" & ¬
+                    ((height of d) as integer as text) & "@@" & names
+            end tell
+        end run
+        """,
+        doc_name,
+    )
+    size, _, names = raw.partition("@@")
+    w, h = (int(v) for v in size.split("x"))
+    return w, h, names.split("|||")
+
+
+def _changed_share(a, b):
+    """Share of pixels that differ visibly between two renders."""
+    if a.size != b.size:
+        b = b.resize(a.size)
+    diff = ImageChops.difference(a, b).convert("L").point(lambda v: 255 if v > 40 else 0)
+    return diff.histogram()[-1] / (a.width * a.height)
+
+
+async def check_edit_table(pres, objects, export):
+    """edit_table, RENDERED: a merged, centred, recoloured header row.
+
+    Read-backs can confirm values moved and the row count grew; only pixels
+    show that a merge happened. A header written into A1 of an UNMERGED row
+    centres its text over column A, so the ink centre sits a third of the way
+    across; merged, it sits over the table's centre. The background is sampled
+    in all three column positions for the same reason.
+    """
+    key = SCRATCH / "edit-table.key"
+    shutil.rmtree(key, ignore_errors=True)
+    key.unlink(missing_ok=True)
+    check(
+        "edit_table: create doc",
+        await pres.create_presentation("edit-table", save_path=str(key)),
+        "Created presentation",
+    )
+    doc = "edit-table.key"
+    slide_w, _, _ = _doc_facts(pres.runner, doc)
+    box = (100, 100, 600, 240)
+    check(
+        "edit_table: add 4x3 table",
+        await objects.add_table(
+            1,
+            [["Team", "Now", "Plan"], ["Eng", 24, 30], ["Sales", 11, 14], ["Ops", 18, 9]],
+            x=box[0],
+            y=box[1],
+            width=box[2],
+            height=box[3],
+            doc_name=doc,
+        ),
+        "table index 1",
+    )
+    red = (200, 40, 40)
+    check(
+        "edit_table: grow, write, sort, merge, style",
+        await objects.edit_table(
+            1,
+            1,
+            row_count=5,
+            values=[["Headcount", "", ""]],
+            sort={"column": "B", "direction": "descending"},
+            merge=["A1:C1"],
+            styles=[
+                {
+                    "range": "A1:C1",
+                    "background_color": "#C82828",
+                    "text_color": "#FFFFFF",
+                    "alignment": "center",
+                },
+                {"range": "C2:C5", "format": "percent"},
+            ],
+            doc_name=doc,
+        ),
+        "Now 5x3",
+    )
+    # The fifth row arrives empty; fill it after the sort so it stays last.
+    check(
+        "edit_table: fill the added row",
+        await objects.edit_table(1, 1, values=[["Support", 7, 0.5]], start_cell="A5", doc_name=doc),
+        "3 cell(s) written",
+    )
+    facts = pres.runner.run(
+        """
+        on run argv
+            tell application "Keynote"
+                tell table 1 of slide 1 of document (item 1 of argv)
+                    set names to {}
+                    repeat with r from 2 to row count
+                        set end of names to (value of cell 1 of row r) as text
+                    end repeat
+                    set AppleScript's text item delimiters to ","
+                    set joined to names as text
+                    set AppleScript's text item delimiters to ""
+                    return joined & "|" & (formatted value of cell 3 of row 5) & "|" & ¬
+                        ((height of row 1) as integer as text) & "|" & ¬
+                        ((item 1 of (get position)) as integer as text) & "," & ¬
+                        ((item 2 of (get position)) as integer as text) & "," & ¬
+                        ((width) as integer as text)
+                end tell
+            end tell
+        end run
+        """,
+        doc,
+    )
+    order, formatted, row1_h, geom = facts.split("|")
+    record(
+        "edit_table sort kept the header and ordered the body by column B",
+        order == "Eng,Ops,Sales,Support",
+        f"body column A: {order}",
+    )
+    record("edit_table number format applied", "%" in formatted, f"C5 shows {formatted!r}")
+    tx, ty, tw = (int(v) for v in geom.split(","))
+    row_h = int(row1_h)
+
+    image, scale = await render_slide(export, 1, "edit-table", slide_w, doc_name=doc)
+    if image is not None:
+        mid_y = ty + row_h / 2
+        samples = [at(image, scale, tx + tw * f, mid_y + row_h * 0.3) for f in (0.08, 0.5, 0.92)]
+        body = at(image, scale, tx + tw * 0.08, ty + row_h * 1.5)
+        record(
+            "edit_table header background is RENDERED across all three columns",
+            all(near(s, red, 45) for s in samples) and not near(body, red, 45),
+            f"header samples {samples}, body {body}, asked {red}",
+        )
+        ink = ink_bbox(image, scale, box=(tx + 4, ty + 2, tw - 8, row_h - 4))
+        centre = (ink[0] + ink[2]) / 2 if ink else None
+        record(
+            "edit_table merge+center is RENDERED: header text sits over the table centre",
+            centre is not None and abs(centre - (tx + tw / 2)) < 25,
+            f"ink centre x={centre}, table centre x={tx + tw / 2} "
+            f"(unmerged would be ~{tx + tw / 6:.0f})",
+        )
+
+    bad = text_of(await objects.edit_table(1, 1, merge=["A1:D9"], doc_name=doc))
+    record("edit_table out-of-range merge refused", "outside the 5x3 table" in bad, bad[:120])
+    check("edit_table: close", await pres.close_presentation(doc_name=doc, should_save=False))
+
+
+async def check_theme_file(pres, slides, export, deck):
+    """theme_file, from a path OUTSIDE Keynote's sandbox, RENDERED.
+
+    The source is $KEYNOTE_MCP_VERIFY_THEME_FILE or, failing that, a theme the
+    user installed (Keynote keeps those in its container as UUID-named .kth
+    files), copied under .scratch with a space and '&' in its name the way a
+    shared-drive path has them. The rendered claims: the themed slide does not
+    look like the default theme's, and it still looks the same after the
+    staged copy is gone and the saved file is reopened.
+    """
+    source = os.environ.get("KEYNOTE_MCP_VERIFY_THEME_FILE", "")
+    if not source:
+        installed = sorted(
+            Path.home().glob(
+                "Library/Containers/com.apple.Keynote/Data/Library/Application Support/"
+                "User Templates/*.kth"
+            )
+        )
+        source = str(installed[0]) if installed else ""
+    if not source:
+        print("SKIP  theme_file: no .kth available (set KEYNOTE_MCP_VERIFY_THEME_FILE)")
+        return
+    theme_dir = SCRATCH / "theme file & co"
+    theme_dir.mkdir(parents=True, exist_ok=True)
+    kth = theme_dir / "Brand Theme & Co.kth"
+    if Path(source).is_dir():
+        shutil.rmtree(kth, ignore_errors=True)
+        shutil.copytree(source, kth)
+    else:
+        shutil.copyfile(source, kth)
+
+    key = SCRATCH / "theme-file.key"
+    plain_key = SCRATCH / "theme-file-plain.key"
+    for path in (key, plain_key):
+        shutil.rmtree(path, ignore_errors=True)
+        path.unlink(missing_ok=True)
+
+    check(
+        "theme_file: create_presentation from a .kth outside the sandbox",
+        await pres.create_presentation("theme-file", theme_file=str(kth), save_path=str(key)),
+        "theme file: Brand Theme & Co.kth",
+    )
+    doc = "theme-file.key"
+    staged_left = list(
+        Path.home().glob("Library/Containers/com.apple.Keynote/Data/tmp/keynote-mcp-theme-*")
+    )
+    record("theme_file staged copy was removed", not staged_left, str(staged_left)[:120])
+    w, h, layouts = _doc_facts(pres.runner, doc)
+
+    check(
+        "theme_file: default-theme doc for comparison",
+        await pres.create_presentation("theme-file-plain", save_path=str(plain_key)),
+        "Created presentation",
+    )
+    plain = "theme-file-plain.key"
+    pw, _, plain_layouts = _doc_facts(pres.runner, plain)
+    record(
+        "theme_file brings the theme's own layouts",
+        set(layouts) != set(plain_layouts),
+        f"{len(layouts)} layouts, first {layouts[:3]}",
+    )
+    check(
+        "theme_file: slide 1 on the theme's first layout",
+        await slides.set_slide_layout(1, layouts[0], doc_name=doc),
+    )
+    check(
+        "theme_file: plain slide 1 on its first layout",
+        await slides.set_slide_layout(1, plain_layouts[0], doc_name=plain),
+    )
+    themed, t_scale = await render_slide(export, 1, "theme-file", w, doc_name=doc)
+    default, d_scale = await render_slide(export, 1, "theme-file-plain", pw, doc_name=plain)
+    if themed is not None and default is not None:
+        # Both are mostly white (an export omits unfilled placeholders), so a
+        # changed-pixel share is tiny either way. What a theme adds is DETAIL:
+        # its logo, rules and footer text on the master.
+        themed_ink, default_ink = ink_fraction(themed, t_scale), ink_fraction(default, d_scale)
+        record(
+            "theme_file slide is RENDERED in the theme, not the default",
+            themed_ink > 0.002 and themed_ink > 3 * default_ink,
+            f"ink {themed_ink * 100:.2f}% vs default theme {default_ink * 100:.2f}%, "
+            f"themed ink box {ink_bbox(themed, t_scale)}",
+        )
+    check("theme_file: save", await pres.save_presentation(doc_name=doc), "Saved")
+    check("theme_file: close", await pres.close_presentation(doc_name=doc, should_save=False))
+    check("theme_file: reopen", await pres.open_presentation(str(key)), "Opened")
+    again, _ = await render_slide(export, 1, "theme-file-reopened", w, doc_name=doc)
+    if themed is not None and again is not None:
+        share = _changed_share(themed, again)
+        record(
+            "theme_file doc RENDERS the same after reopen (copy gone, file self-contained)",
+            share < 0.02,
+            f"{share * 100:.2f}% of pixels changed",
+        )
+    check(
+        "theme_file: close reopened", await pres.close_presentation(doc_name=doc, should_save=False)
+    )
+    check(
+        "theme_file: close plain", await pres.close_presentation(doc_name=plain, should_save=False)
+    )
+
+    md_key = SCRATCH / "theme-file-deck.key"
+    reply = check(
+        "theme_file: build_deck via markdown frontmatter",
+        await deck.build_deck(
+            markdown=f"---\ntheme_file: {kth}\nsave_path: {md_key}\n---\n# Hello\n\n## Two\n\n- a\n- b\n"
+        ),
+        "theme file: Brand Theme & Co.kth",
+    )
+    record(
+        "build_deck keeps the theme's own slide size",
+        f'"size": "{w}x{h}"' in reply,
+        f"theme is {w}x{h}; reply: {reply[:120]}",
+    )
+    doc_line = re.search(r'"document": "([^"]+)"', reply)
+    if doc_line:
+        await pres.close_presentation(doc_name=doc_line.group(1), should_save=False)
 
 
 async def main():
@@ -1489,7 +1778,11 @@ async def main():
             "1. rt-n1",
             lambda: content.add_numbered_list(4, ["rt-n1"], x=60, y=340),
         ),
-        ("add_code_block", "rt_code = 1", lambda: content.add_code_block(4, "rt_code = 1", x=60, y=410)),
+        (
+            "add_code_block",
+            "rt_code = 1",
+            lambda: content.add_code_block(4, "rt_code = 1", x=60, y=410),
+        ),
         ("add_quote", "“rt-quote”", lambda: content.add_quote(4, "rt-quote", x=60, y=480)),
     ]
     for offset, (name, expected_text, call) in enumerate(adders):
@@ -1520,7 +1813,10 @@ async def main():
     check("add_slide(blank, for centering)", await slides.add_slide(), "Added slide #4")
     centered_bands = []
     for tool_name, call in [
-        ("add_title", lambda: content.add_title(4, "Centered Headline", y=100, font_size=60, centered=True)),
+        (
+            "add_title",
+            lambda: content.add_title(4, "Centered Headline", y=100, font_size=60, centered=True),
+        ),
         ("add_subtitle", lambda: content.add_subtitle(4, "Centered sub", y=300, centered=True)),
     ]:
         reply = text_of(await call())
@@ -1554,7 +1850,9 @@ async def main():
                 f"{tool_name}(centered) RENDERED text is centered, not just the box",
                 bb is not None and abs(visual_center - slide_w / 2) <= 4,
                 f"ink spans {bb[0]:.0f}-{bb[2]:.0f}pt, center {visual_center:.1f} vs "
-                f"{slide_w / 2:.0f}" if bb else "no ink rendered in the band",
+                f"{slide_w / 2:.0f}"
+                if bb
+                else "no ink rendered in the band",
             )
     check("delete centering slide", await slides.delete_slide(4), "Deleted slide 4")
 
@@ -1577,13 +1875,52 @@ async def main():
     # this loop can, so the elements have to be somewhere they can be seen.
     right_col = round(slide_w * 0.60)
     geometry_cases = [
-        ("add_text_box(12pt)", 100, 60, lambda: content.add_text_box(4, "geometry probe", x=100, y=60, font_size=12)),
-        ("add_subtitle(24pt)", 100, 120, lambda: content.add_subtitle(4, "geometry subtitle", x=100, y=120)),
-        ("add_title(36pt)", 100, 190, lambda: content.add_title(4, "Geometry Title", x=100, y=190, font_size=36)),
-        ("add_title(48pt=default)", 100, 280, lambda: content.add_title(4, "Geometry Title", x=100, y=280, font_size=48)),
-        ("add_bullet_list(24pt, 4 lines)", 100, 390, lambda: content.add_bullet_list(4, ["g1", "g2", "g3", "g4"], x=100, y=390, font_size=24)),
-        ("add_title(96pt clip path)", 100, 560, lambda: content.add_title(4, "Geometry Title", x=100, y=560, font_size=96)),
-        ("add_code_block(14pt, green)", right_col, 60, lambda: content.add_code_block(4, "geo = 1", x=right_col, y=60, color="10000,55000,10000")),
+        (
+            "add_text_box(12pt)",
+            100,
+            60,
+            lambda: content.add_text_box(4, "geometry probe", x=100, y=60, font_size=12),
+        ),
+        (
+            "add_subtitle(24pt)",
+            100,
+            120,
+            lambda: content.add_subtitle(4, "geometry subtitle", x=100, y=120),
+        ),
+        (
+            "add_title(36pt)",
+            100,
+            190,
+            lambda: content.add_title(4, "Geometry Title", x=100, y=190, font_size=36),
+        ),
+        (
+            "add_title(48pt=default)",
+            100,
+            280,
+            lambda: content.add_title(4, "Geometry Title", x=100, y=280, font_size=48),
+        ),
+        (
+            "add_bullet_list(24pt, 4 lines)",
+            100,
+            390,
+            lambda: content.add_bullet_list(
+                4, ["g1", "g2", "g3", "g4"], x=100, y=390, font_size=24
+            ),
+        ),
+        (
+            "add_title(96pt clip path)",
+            100,
+            560,
+            lambda: content.add_title(4, "Geometry Title", x=100, y=560, font_size=96),
+        ),
+        (
+            "add_code_block(14pt, green)",
+            right_col,
+            60,
+            lambda: content.add_code_block(
+                4, "geo = 1", x=right_col, y=60, color="10000,55000,10000"
+            ),
+        ),
     ]
     geometry_boxes = {}
     for name, gx, gy, call in geometry_cases:
@@ -1610,7 +1947,9 @@ async def main():
             f"reply ({rx},{ry}) {rw},{rh} vs slide {entry[-40:]}" if not match_ok else "",
         )
     shape_reply = text_of(await content.add_shape(4, x=right_col, y=200, width=240, height=140))
-    m = re.search(r"shape index (\d+)\) at \(([^,]+), ([^)]+)\), size ([^x]+)x([\d.]+)", shape_reply)
+    m = re.search(
+        r"shape index (\d+)\) at \(([^,]+), ([^)]+)\), size ([^x]+)x([\d.]+)", shape_reply
+    )
     if m:
         idx, rx, ry, rw, rh = m.groups()
         report = text_of(await content.get_slide_content(4))
@@ -1878,9 +2217,7 @@ async def main():
     check("add_line", await objects.add_line(4, 40, 270, 480, 270), "line index")
     panel_reply = check(
         "add_colored_panel(#2F4B7C, r=20)",
-        await objects.add_colored_panel(
-            4, *PANEL_BOX, color="#2F4B7C", radius=20
-        ),
+        await objects.add_colored_panel(4, *PANEL_BOX, color="#2F4B7C", radius=20),
         "image index",
     )
     record(
@@ -2098,8 +2435,7 @@ async def main():
     await export.export_pdf(str(skip_pdf_all), include_skipped=True)
     record(
         "a skipped slide is left OUT of the PDF, and include_skipped puts it back",
-        pdf_page_count(skip_pdf) == slide_total - 1
-        and pdf_page_count(skip_pdf_all) == slide_total,
+        pdf_page_count(skip_pdf) == slide_total - 1 and pdf_page_count(skip_pdf_all) == slide_total,
         f"{pdf_page_count(skip_pdf)} pages skipping vs {pdf_page_count(skip_pdf_all)} "
         f"including, for {slide_total} slides",
     )
@@ -2118,9 +2454,7 @@ async def main():
         images_including == slide_total - 1 and "Keynote ignores include_skipped" in images_reply,
         f"{images_including} images for {slide_total} slides with include_skipped=True",
     )
-    check(
-        "set_slide_skipped(4, false)", await slides.set_slide_skipped(4, False), "not skipped"
-    )
+    check("set_slide_skipped(4, false)", await slides.set_slide_skipped(4, False), "not skipped")
     numbers_off_img, _numbers_scale = await render_slide(export, 3, "numbers-off", slide_w)
     check(
         "set_document_settings(slide numbers on)",
@@ -2177,12 +2511,8 @@ async def main():
     )
     record("pptx exists", pptx_path.exists() and pptx_path.stat().st_size > 1000, "")
     with zipfile.ZipFile(pptx_path) as bundle:
-        pptx_slides = [
-            n for n in bundle.namelist() if re.fullmatch(r"ppt/slides/slide\d+\.xml", n)
-        ]
-        pptx_text = "".join(
-            bundle.read(n).decode("utf-8", "ignore") for n in sorted(pptx_slides)
-        )
+        pptx_slides = [n for n in bundle.namelist() if re.fullmatch(r"ppt/slides/slide\d+\.xml", n)]
+        pptx_text = "".join(bundle.read(n).decode("utf-8", "ignore") for n in sorted(pptx_slides))
     record(
         "pptx really contains one slide part per slide, with the deck's text",
         len(pptx_slides) == slide_total and "Phase 3 Title" in pptx_text,
@@ -2345,8 +2675,7 @@ async def main():
             panel_px = at(deck3, deck3_scale, px + pw - 16, py + ph - 16)
             record(
                 "build_deck: the panel renders in the style's color (boardroom #E8EDF6)",
-                near(panel_px, (232, 237, 246), 10)
-                and not near(panel_px, dominant(deck3), 10),
+                near(panel_px, (232, 237, 246), 10) and not near(panel_px, dominant(deck3), 10),
                 f"sampled {panel_px}, slide background {dominant(deck3)}",
             )
         if deck3 and len(bullet_boxes) == 2:
@@ -2386,7 +2715,9 @@ async def main():
         # back geometry-only (chart_type null - Keynote exposes no data to
         # read), so they cannot be rebuilt and must be dropped or refilled;
         # validate_spec correctly rejects them otherwise.
-        chart_rejected = text_of(await deck.build_deck(spec=described, save_path=str(SCRATCH / "verify-deck-rt.key")))
+        chart_rejected = text_of(
+            await deck.build_deck(spec=described, save_path=str(SCRATCH / "verify-deck-rt.key"))
+        )
         record(
             "rebuild with null chart_type rejected up front (charts are write-once)",
             "Spec validation failed" in chart_rejected and "chart_type" in chart_rejected,
@@ -2398,9 +2729,7 @@ async def main():
             for e in sl.get("elements", []):
                 if e.get("type") == "chart":
                     dropped.append("chart")  # write-once: no data to read back
-                elif e.get("type") == "image" and not Path(
-                    str(e.get("path", ""))
-                ).is_file():
+                elif e.get("type") == "image" and not Path(str(e.get("path", ""))).is_file():
                     dropped.append("embedded image")  # only the basename survives embedding
                 else:
                     kept.append(e)
@@ -2412,9 +2741,7 @@ async def main():
         )
         described["slides"][2].pop("skipped", None)  # keep visible for the rebuild
         rebuilt = text_of(
-            await deck.build_deck(
-                spec=described, save_path=str(SCRATCH / "verify-deck-rt.key")
-            )
+            await deck.build_deck(spec=described, save_path=str(SCRATCH / "verify-deck-rt.key"))
         )
         record(
             "build_deck(describe_deck output) rebuilds with zero errors",
@@ -2574,6 +2901,8 @@ async def main():
     await check_document_resolution(pres, slides, content, export, objects)
     await check_fill_is_unwritable(pres, slides, content, export, objects)
     await check_text_runs_author(pres, export, deck)
+    await check_edit_table(pres, objects, export)
+    await check_theme_file(pres, slides, export, deck)
 
     failed = [r for r in RESULTS if not r[1]]
     print(f"\n{len(RESULTS)} checks, {len(failed)} failed")
