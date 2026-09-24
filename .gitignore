@@ -202,3 +202,5 @@ screenshots/
 .Trashes
 ehthumbs.db
 Thumbs.db 
+# Agent prompts, kept local
+PROMPT-*.md
